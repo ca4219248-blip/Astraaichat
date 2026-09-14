@@ -1,0 +1,714 @@
+
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puter AI Chat Studio</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            900: '#14532d',
+                        },
+                        darkbg: '#0b0f17',
+                        darkcard: '#111827',
+                        darkhover: '#1f2937',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Puter.js SDK -->
+    <script src="https://js.puter.com/v2/"></script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Marked.js for Markdown Parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Highlight.js for Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Prose Typography Customizations for AI responses */
+        .markdown-body {
+            line-height: 1.65;
+            color: #e2e8f0;
+        }
+        .markdown-body p {
+            margin-bottom: 0.85em;
+        }
+        .markdown-body p:last-child {
+            margin-bottom: 0;
+        }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+            font-weight: 600;
+            margin-top: 1.2em;
+            margin-bottom: 0.6em;
+            color: #f8fafc;
+        }
+        .markdown-body h1 { font-size: 1.4em; }
+        .markdown-body h2 { font-size: 1.25em; }
+        .markdown-body h3 { font-size: 1.1em; }
+        .markdown-body ul { list-style-type: disc; padding-left: 1.4em; margin-bottom: 0.85em; }
+        .markdown-body ol { list-style-type: decimal; padding-left: 1.4em; margin-bottom: 0.85em; }
+        .markdown-body code:not(pre code) {
+            background-color: rgba(51, 65, 85, 0.6);
+            color: #38bdf8;
+            padding: 0.15em 0.4em;
+            border-radius: 0.25rem;
+            font-size: 0.875em;
+            font-family: monospace;
+        }
+        .markdown-body pre {
+            background-color: #0d1117 !important;
+            border: 1px solid #1e293b;
+            border-radius: 0.5rem;
+            margin: 0.85em 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .markdown-body pre code {
+            display: block;
+            padding: 1rem;
+            overflow-x: auto;
+            font-size: 0.875em;
+        }
+        .markdown-body blockquote {
+            border-left: 3px solid #3b82f6;
+            padding-left: 0.8em;
+            color: #94a3b8;
+            margin: 0.85em 0;
+            font-style: italic;
+        }
+
+        .typing-cursor::after {
+            content: '▋';
+            display: inline-block;
+            vertical-align: baseline;
+            animation: blink 1s infinite;
+            color: #38bdf8;
+            margin-left: 2px;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-darkbg text-slate-200 h-screen w-screen overflow-hidden flex flex-col md:flex-row antialiased">
+
+    <div id="sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 z-30 hidden md:hidden transition-opacity"></div>
+
+    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-40 w-72 bg-darkcard border-r border-slate-800/80 flex flex-col transition-transform duration-300 transform -translate-x-full md:translate-x-0">
+        <!-- Sidebar Header -->
+        <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white font-bold shadow-md shadow-brand-500/20">
+                    <i class="fa-solid font-bold text-sm">AI</i>
+                </div>
+                <span class="font-semibold text-slate-100 tracking-wide text-base">Puter AI Studio</span>
+            </div>
+            <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-slate-200 p-1">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- New Chat Button -->
+        <div class="p-3">
+            <button onclick="createNewChat()" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-slate-800 to-slate-800/80 hover:from-slate-700 hover:to-slate-800 border border-slate-700/60 hover:border-slate-600 text-slate-100 py-2.5 px-4 rounded-xl transition-all duration-200 shadow-sm font-medium text-sm group">
+                <i class="fa-solid fa-plus text-brand-500 group-hover:rotate-90 transition-transform duration-300"></i>
+                <span>New Conversation</span>
+            </button>
+        </div>
+
+        <!-- Chat History List -->
+        <div class="flex-1 overflow-y-auto px-2 py-2 space-y-1" id="chat-history-list">
+            <!-- Dynamic items populated by JS -->
+        </div>
+
+        <!-- Sidebar Footer / Settings -->
+        <div class="p-3 border-t border-slate-800/80 bg-slate-950/40 space-y-2">
+            <button onclick="clearAllChats()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                <i class="fa-solid fa-trash-can"></i>
+                <span>Clear all history</span>
+            </button>
+            <div class="pt-2 border-t border-slate-800/50 flex items-center justify-between px-1 text-xs text-slate-500">
+                <span class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Powered by Puter.js
+                </span>
+                <span class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">v2.0</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full min-w-0 bg-darkbg relative">
+        
+        <!-- Top Navbar -->
+        <header class="h-14 border-b border-slate-800/80 bg-darkcard/50 backdrop-blur-md px-4 flex items-center justify-between z-10">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-slate-200 p-2 rounded-lg hover:bg-slate-800">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+                
+                <!-- Model Selector Dropdown -->
+                <div class="relative inline-block text-left">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-slate-400 hidden sm:inline">Model:</span>
+                        <select id="model-select" onchange="updateSelectedModel(this.value)" class="bg-slate-800/90 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-medium rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer">
+                            <option value="gpt-4o-mini">OpenAI (GPT-4o Mini)</option>
+                            <option value="gpt-4o">OpenAI (GPT-4o)</option>
+                            <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                            <option value="deepseek-chat">DeepSeek Chat</option>
+                            <option value="openai/gpt-6-astra">GPT-6 Astra</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button onclick="exportCurrentChat()" title="Export Chat" class="p-2 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800 transition-colors text-sm">
+                    <i class="fa-solid fa-download"></i>
+                </button>
+            </div>
+        </header>
+
+        <div id="chat-container" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth">
+            <!-- Welcome screen shown when chat is empty -->
+            <div id="welcome-screen" class="h-full flex flex-col items-center justify-center max-w-2xl mx-auto text-center px-4 my-auto">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white text-3xl font-bold mb-4 shadow-xl shadow-brand-500/10 border border-brand-500/30">
+                    <i class="fa-solid fa-sparkles"></i>
+                </div>
+                <h1 class="text-2xl md:text-3xl font-bold text-slate-100 mb-2">How can I help you today?</h1>
+                <p class="text-slate-400 text-sm mb-8 max-w-md">Ask questions, generate code, summarize topics, or explore creative ideas instantly powered by Puter.js AI models.</p>
+
+                <!-- Prompt Suggestion Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full text-left">
+                    <button onclick="sendPresetPrompt('Explain quantum computing in simple terms')" class="p-3.5 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800 hover:border-slate-700 transition-all text-sm group">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-medium text-slate-200 group-hover:text-brand-500 transition-colors">Quantum Computing</span>
+                            <i class="fa-solid fa-atom text-slate-500 group-hover:text-brand-500 text-xs"></i>
+                        </div>
+                        <p class="text-xs text-slate-400 line-clamp-2">Explain quantum computing concepts using standard analogies.</p>
+                    </button>
+
+                    <button onclick="sendPresetPrompt('Write a clean JavaScript function to filter and sort an array of objects')" class="p-3.5 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800 hover:border-slate-700 transition-all text-sm group">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-medium text-slate-200 group-hover:text-brand-500 transition-colors">JavaScript Code Snippet</span>
+                            <i class="fa-solid fa-code text-slate-500 group-hover:text-brand-500 text-xs"></i>
+                        </div>
+                        <p class="text-xs text-slate-400 line-clamp-2">Filter and sort complex array data with modern ES6+ JS.</p>
+                    </button>
+
+                    <button onclick="sendPresetPrompt('What are 5 key strategies for effective time management?')" class="p-3.5 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800 hover:border-slate-700 transition-all text-sm group">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-medium text-slate-200 group-hover:text-brand-500 transition-colors">Time Management</span>
+                            <i class="fa-solid fa-clock text-slate-500 group-hover:text-brand-500 text-xs"></i>
+                        </div>
+                        <p class="text-xs text-slate-400 line-clamp-2">Discover actionable habits to boost daily productivity.</p>
+                    </button>
+
+                    <button onclick="sendPresetPrompt('Compare the pros and cons of SQL vs NoSQL databases')" class="p-3.5 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800 hover:border-slate-700 transition-all text-sm group">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-medium text-slate-200 group-hover:text-brand-500 transition-colors">Database Architecture</span>
+                            <i class="fa-solid fa-database text-slate-500 group-hover:text-brand-500 text-xs"></i>
+                        </div>
+                        <p class="text-xs text-slate-400 line-clamp-2">Comprehensive comparison between relational and non-relational DBs.</p>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Messages Stream Wrapper -->
+            <div id="messages-wrapper" class="max-w-3xl mx-auto space-y-6 hidden">
+                <!-- Dynamically populated messages appear here -->
+            </div>
+        </div>
+
+        <div class="p-4 bg-darkcard/80 border-t border-slate-800/80 backdrop-blur-md">
+            <div class="max-w-3xl mx-auto relative">
+                <form id="chat-form" onsubmit="handleFormSubmit(event)" class="relative flex items-end bg-slate-900 border border-slate-700/70 focus-within:border-brand-500 focus-within:ring-1 focus-within:ring-brand-500 rounded-2xl shadow-lg transition-all">
+                    <textarea 
+                        id="user-input" 
+                        rows="1" 
+                        placeholder="Type a message or question..." 
+                        onkeydown="handleKeyDown(event)"
+                        oninput="autoResizeTextarea(this)"
+                        class="w-full bg-transparent text-slate-100 placeholder-slate-500 px-4 py-3.5 pr-12 focus:outline-none resize-none max-h-48 text-sm leading-relaxed"
+                    ></textarea>
+                    
+                    <button 
+                        type="submit" 
+                        id="send-btn" 
+                        class="absolute right-2.5 bottom-2.5 w-8 h-8 rounded-xl bg-brand-600 hover:bg-brand-500 text-white flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-brand-600/30"
+                    >
+                        <i class="fa-solid fa-arrow-up text-sm"></i>
+                    </button>
+                </form>
+                <div class="flex items-center justify-between px-2 mt-2 text-[11px] text-slate-500">
+                    <span>Press <kbd class="px-1 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-[10px]">Enter</kbd> to send, <kbd class="px-1 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-[10px]">Shift+Enter</kbd> for line break</span>
+                    <span id="char-counter" class="hidden sm:inline">0 chars</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // State variables
+        let conversations = JSON.parse(localStorage.getItem('puter_ai_conversations') || '[]');
+        let activeChatId = localStorage.getItem('puter_ai_active_chat_id') || null;
+        let selectedModel = localStorage.getItem('puter_ai_model') || 'gpt-4o-mini';
+        let isGenerating = false;
+
+        // Configure Marked.js options
+        marked.setOptions({
+            highlight: function(code, lang) {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, { language }).value;
+            },
+            langPrefix: 'hljs language-',
+            breaks: true
+        });
+
+        // Initialize App on DOM Load
+        window.addEventListener('DOMContentLoaded', () => {
+            // Restore saved model selection
+            const modelSelect = document.getElementById('model-select');
+            if (modelSelect) modelSelect.value = selectedModel;
+
+            // Load existing conversation or setup a clean view
+            if (conversations.length === 0) {
+                createNewChat(false);
+            } else {
+                if (!activeChatId || !conversations.find(c => c.id === activeChatId)) {
+                    activeChatId = conversations[0].id;
+                }
+                renderChatHistoryList();
+                renderActiveChat();
+            }
+        });
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            sidebar.classList.toggle('-translate-x-full');
+            backdrop.classList.toggle('hidden');
+        }
+
+        function updateSelectedModel(model) {
+            selectedModel = model;
+            localStorage.setItem('puter_ai_model', model);
+        }
+
+        function autoResizeTextarea(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 192) + 'px';
+            
+            // Update char count display
+            const counter = document.getElementById('char-counter');
+            if (counter) counter.innerText = `${textarea.value.length} chars`;
+        }
+
+        function handleKeyDown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('chat-form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            }
+        }
+
+        function createNewChat(shouldRender = true) {
+            const newChat = {
+                id: 'chat_' + Date.now(),
+                title: 'New Conversation',
+                messages: [],
+                createdAt: new Date().toISOString()
+            };
+            conversations.unshift(newChat);
+            activeChatId = newChat.id;
+            saveState();
+            
+            if (shouldRender) {
+                renderChatHistoryList();
+                renderActiveChat();
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem('puter_ai_conversations', JSON.stringify(conversations));
+            localStorage.setItem('puter_ai_active_chat_id', activeChatId);
+        }
+
+        function renderChatHistoryList() {
+            const list = document.getElementById('chat-history-list');
+            list.innerHTML = '';
+
+            conversations.forEach(chat => {
+                const isActive = chat.id === activeChatId;
+                const item = document.createElement('div');
+                item.className = `group flex items-center justify-between px-3 py-2.5 rounded-xl text-sm cursor-pointer transition-all ${
+                    isActive 
+                        ? 'bg-slate-800 text-slate-100 font-medium border border-slate-700/80 shadow-sm' 
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                }`;
+                
+                item.onclick = (e) => {
+                    if (e.target.closest('.delete-btn')) return;
+                    activeChatId = chat.id;
+                    saveState();
+                    renderChatHistoryList();
+                    renderActiveChat();
+                    // Close sidebar on mobile after selecting
+                    if (window.innerWidth < 768) toggleSidebar();
+                };
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-2.5 truncate">
+                        <i class="fa-regular fa-message text-xs ${isActive ? 'text-brand-500' : 'text-slate-500'}"></i>
+                        <span class="truncate">${escapeHtml(chat.title)}</span>
+                    </div>
+                    <button class="delete-btn opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 p-1 transition-opacity" onclick="deleteChat('${chat.id}')" title="Delete conversation">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                `;
+
+                list.appendChild(item);
+            });
+        }
+
+        function deleteChat(chatId) {
+            conversations = conversations.filter(c => c.id !== chatId);
+            if (activeChatId === chatId) {
+                activeChatId = conversations.length > 0 ? conversations[0].id : null;
+            }
+            if (conversations.length === 0) {
+                createNewChat(false);
+            }
+            saveState();
+            renderChatHistoryList();
+            renderActiveChat();
+        }
+
+        function clearAllChats() {
+            if (confirm("Are you sure you want to clear all conversation history?")) {
+                conversations = [];
+                activeChatId = null;
+                createNewChat(true);
+            }
+        }
+
+        function renderActiveChat() {
+            const currentChat = conversations.find(c => c.id === activeChatId);
+            const welcomeScreen = document.getElementById('welcome-screen');
+            const messagesWrapper = document.getElementById('messages-wrapper');
+
+            if (!currentChat || currentChat.messages.length === 0) {
+                welcomeScreen.classList.remove('hidden');
+                messagesWrapper.classList.add('hidden');
+                messagesWrapper.innerHTML = '';
+            } else {
+                welcomeScreen.classList.add('hidden');
+                messagesWrapper.classList.remove('hidden');
+                messagesWrapper.innerHTML = '';
+
+                currentChat.messages.forEach(msg => {
+                    appendMessageUI(msg.role, msg.content, false);
+                });
+                
+                scrollToBottom();
+            }
+        }
+
+        function sendPresetPrompt(promptText) {
+            const userInput = document.getElementById('user-input');
+            userInput.value = promptText;
+            autoResizeTextarea(userInput);
+            handleFormSubmit(new Event('submit'));
+        }
+
+        async function handleFormSubmit(e) {
+            if (e) e.preventDefault();
+            if (isGenerating) return;
+
+            const inputEl = document.getElementById('user-input');
+            const prompt = inputEl.value.trim();
+            if (!prompt) return;
+
+            // Reset input field
+            inputEl.value = '';
+            autoResizeTextarea(inputEl);
+
+            // Get or create current chat
+            let currentChat = conversations.find(c => c.id === activeChatId);
+            if (!currentChat) {
+                createNewChat(false);
+                currentChat = conversations.find(c => c.id === activeChatId);
+            }
+
+            // Auto-generate title if first message
+            if (currentChat.messages.length === 0) {
+                currentChat.title = prompt.length > 28 ? prompt.substring(0, 28) + '...' : prompt;
+                renderChatHistoryList();
+            }
+
+            // Append User message to state and UI
+            const userMsg = { role: 'user', content: prompt, timestamp: new Date().toISOString() };
+            currentChat.messages.push(userMsg);
+            saveState();
+
+            document.getElementById('welcome-screen').classList.add('hidden');
+            document.getElementById('messages-wrapper').classList.remove('hidden');
+
+            appendMessageUI('user', prompt, true);
+            scrollToBottom();
+
+            // Set loading state
+            isGenerating = true;
+            toggleSendButtonState(true);
+
+            // Create Assistant placeholder message UI
+            const assistantMsgEl = createAssistantMessageElement();
+            const contentContainer = assistantMsgEl.querySelector('.markdown-body');
+            contentContainer.classList.add('typing-cursor');
+
+            try {
+                // Prepare message payload for Puter AI
+                const formattedMessages = currentChat.messages.map(m => ({
+                    role: m.role,
+                    content: m.content
+                }));
+
+                let fullResponse = "";
+
+                // Puter AI Chat Call (supports streaming via stream option)
+                const response = await puter.ai.chat(formattedMessages, { 
+                    model: selectedModel,
+                    stream: true 
+                });
+
+                if (typeof response[Symbol.asyncIterator] === 'function') {
+                    // Stream response chunks
+                    for await (const chunk of response) {
+                        const token = chunk?.text || chunk?.message?.content || "";
+                        fullResponse += token;
+                        contentContainer.innerHTML = marked.parse(fullResponse);
+                        highlightCodeBlocks(contentContainer);
+                        scrollToBottom();
+                    }
+                } else {
+                    // Non-stream response fallback
+                    fullResponse = response?.message?.content || response?.toString() || "No response content received.";
+                    contentContainer.innerHTML = marked.parse(fullResponse);
+                    highlightCodeBlocks(contentContainer);
+                }
+
+                contentContainer.classList.remove('typing-cursor');
+                
+                // Save assistant response to state
+                currentChat.messages.push({
+                    role: 'assistant',
+                    content: fullResponse,
+                    timestamp: new Date().toISOString()
+                });
+                saveState();
+
+            } catch (error) {
+                console.error("Puter AI Error:", error);
+                contentContainer.classList.remove('typing-cursor');
+                contentContainer.innerHTML = `
+                    <div class="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>An error occurred while generating response: ${escapeHtml(error.message || 'Unknown error')}</span>
+                    </div>
+                `;
+            } finally {
+                isGenerating = false;
+                toggleSendButtonState(false);
+                scrollToBottom();
+            }
+        }
+
+        function appendMessageUI(role, content, animate = false) {
+            const wrapper = document.getElementById('messages-wrapper');
+            const isUser = role === 'user';
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex gap-3.5 ${isUser ? 'justify-end' : 'justify-start'} ${animate ? 'animate-fade-in' : ''}`;
+
+            if (isUser) {
+                messageDiv.innerHTML = `
+                    <div class="max-w-[85%] sm:max-w-[75%] bg-brand-600/90 text-white px-4 py-3 rounded-2xl rounded-tr-sm shadow-md text-sm leading-relaxed border border-brand-500/30">
+                        ${escapeHtml(content).replace(/\n/g, '<br>')}
+                    </div>
+                    <div class="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 text-xs shrink-0">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                `;
+            } else {
+                const parsedMarkdown = marked.parse(content || '');
+                messageDiv.innerHTML = `
+                    <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white text-xs shrink-0 shadow-md shadow-brand-500/10">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <div class="flex-1 max-w-[88%] sm:max-w-[82%] bg-slate-900/90 border border-slate-800 px-4 py-3.5 rounded-2xl rounded-tl-sm shadow-md text-sm relative group">
+                        <div class="markdown-body">${parsedMarkdown}</div>
+                        <div class="mt-2 pt-2 border-t border-slate-800/60 flex items-center justify-end gap-2 text-xs text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="copyMessageText(this)" class="hover:text-slate-300 px-1.5 py-1 rounded hover:bg-slate-800 transition-colors" title="Copy message text">
+                                <i class="fa-regular fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            wrapper.appendChild(messageDiv);
+            if (!isUser) highlightCodeBlocks(messageDiv);
+            return messageDiv;
+        }
+
+        function createAssistantMessageElement() {
+            const wrapper = document.getElementById('messages-wrapper');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex gap-3.5 justify-start';
+
+            messageDiv.innerHTML = `
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white text-xs shrink-0 shadow-md shadow-brand-500/10">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div class="flex-1 max-w-[88%] sm:max-w-[82%] bg-slate-900/90 border border-slate-800 px-4 py-3.5 rounded-2xl rounded-tl-sm shadow-md text-sm relative group">
+                    <div class="markdown-body"></div>
+                </div>
+            `;
+
+            wrapper.appendChild(messageDiv);
+            return messageDiv;
+        }
+
+        function highlightCodeBlocks(container) {
+            container.querySelectorAll('pre code').forEach((codeBlock) => {
+                hljs.highlightElement(codeBlock);
+                
+                // Add Copy Button to code block if missing
+                const pre = codeBlock.parentElement;
+                if (!pre.querySelector('.code-copy-btn')) {
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'code-copy-btn absolute top-2 right-2 bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-xs px-2 py-1 rounded border border-slate-700/60 transition-colors flex items-center gap-1';
+                    copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> <span>Copy</span>';
+                    
+                    copyBtn.onclick = () => {
+                        copyToClipboard(codeBlock.innerText);
+                        copyBtn.innerHTML = '<i class="fa-solid fa-check text-brand-500"></i> <span class="text-brand-500">Copied!</span>';
+                        setTimeout(() => {
+                            copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> <span>Copy</span>';
+                        }, 2000);
+                    };
+
+                    pre.classList.add('relative');
+                    pre.appendChild(copyBtn);
+                }
+            });
+        }
+
+        function copyMessageText(btn) {
+            const card = btn.closest('.group');
+            const markdownBody = card.querySelector('.markdown-body');
+            copyToClipboard(markdownBody.innerText);
+            
+            btn.innerHTML = '<i class="fa-solid fa-check text-brand-500"></i>';
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+            }, 2000);
+        }
+
+        function copyToClipboard(text) {
+            // Safe copy fallback for iFrame / strict web permissions
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+        }
+
+        function toggleSendButtonState(disabled) {
+            const btn = document.getElementById('send-btn');
+            if (disabled) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin text-sm"></i>';
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-arrow-up text-sm"></i>';
+            }
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('chat-container');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function exportCurrentChat() {
+            const currentChat = conversations.find(c => c.id === activeChatId);
+            if (!currentChat || currentChat.messages.length === 0) return;
+
+            let formattedText = `# ${currentChat.title}\n\n`;
+            currentChat.messages.forEach(m => {
+                formattedText += `### ${m.role.toUpperCase()} (${new Date(m.timestamp).toLocaleString()})\n\n${m.content}\n\n---\n\n`;
+            });
+
+            const blob = new Blob([formattedText], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${currentChat.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
